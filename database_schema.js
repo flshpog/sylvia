@@ -1,6 +1,10 @@
-const mongoose = require("mongoose")
+// Settings definitions + default-filling.
+// (Previously this built a Mongoose schema. The bot now stores data in plain
+//  JSON files via classes/DatabaseModel.js, so all we need from here is the
+//  settings definition and a way to fill in default values on read - which is
+//  the one thing Mongoose used to do for us automatically.)
 
-// Most of the properties below are used for the web server, they are not built into the mongo schema
+// Most of the properties below are used for the web server.
 
 // type:        the value's data type (bool, int, float, string, collection)
 // default:     the default value
@@ -85,23 +89,7 @@ const settings = {
 }
 
 const settingsArray = []
-const settingsObj = {}
 const settingsIDs = {}
-
-const schemaTypes = {
-    "bool": Boolean,
-    "int": Number,
-    "float": Number,
-    "string": String,
-    "collection": [Object]
-}
-
-function schemaVal(val) {
-    let result = { type: schemaTypes[val.type] }
-    if (val.type == "collection") result.default = []
-    else if (val.default !== undefined) result.default = val.default
-    return result
-}
 
 function addToSettingsArray(value, name) {
     let obj = value
@@ -110,35 +98,56 @@ function addToSettingsArray(value, name) {
     settingsIDs[name] = obj
 }
 
-// for settings, create the actual mongo schema
-Object.entries(settings).forEach(x => {
-    let [key, val] = x
+// flatten the settings definition into settingsArray / settingsIDs (used by the
+// config commands and the web dashboard)
+Object.entries(settings).forEach(([key, val]) => {
     if (!val.type) {
-        let collection = {}
-        Object.entries(val).forEach(z => {
-            let [innerKey, innerVal] = z
-            collection[innerKey] = schemaVal(innerVal)
+        Object.entries(val).forEach(([innerKey, innerVal]) => {
             addToSettingsArray(innerVal, `${key}.${innerKey}`)
         })
-        settingsObj[key] = collection
     }
-    else {
-        addToSettingsArray(val, key)
-        settingsObj[key] = schemaVal(val)
-    }
+    else addToSettingsArray(val, key)
 })
 
-const schema = { 
-    _id: String,
-    users: { type: Object }, // xp, cooldown, hidden. should be validated but it just slows things down
-    settings: settingsObj,
-    info: {
-        lastUpdate: { type: Number, default: 0 },
+// build a fresh settings object filled with every default value
+function defaultSettings() {
+    const out = {}
+    Object.entries(settings).forEach(([key, val]) => {
+        if (val.type) out[key] = val.type == "collection" ? [] : val.default
+        else {
+            out[key] = {}
+            Object.entries(val).forEach(([innerKey, innerVal]) => {
+                out[key][innerKey] = innerVal.type == "collection" ? [] : innerVal.default
+            })
+        }
+    })
+    return out
+}
+
+// deep-merge stored values on top of defaults (arrays/collections are replaced wholesale)
+function merge(base, over) {
+    if (over === undefined) return base
+    if (Array.isArray(base) || Array.isArray(over)) return over
+    if (base && over && typeof base == "object" && typeof over == "object") {
+        const out = { ...base }
+        for (const k in over) out[k] = (k in base) ? merge(base[k], over[k]) : over[k]
+        return out
+    }
+    return over
+}
+
+// given a stored server document (or null), return a full document with all
+// default settings filled in - this is what Mongoose used to do for us
+function applyDefaults(stored) {
+    if (!stored) return stored
+    return {
+        _id: stored._id,
+        users: stored.users || {},
+        settings: merge(defaultSettings(), stored.settings || {}),
+        info: { lastUpdate: 0, ...(stored.info || {}) }
     }
 }
 
-const finalSchema = new mongoose.Schema(schema)
-
 module.exports = {
-    settings, settingsArray, settingsIDs, schema: finalSchema
+    settings, settingsArray, settingsIDs, defaultSettings, applyDefaults
 }

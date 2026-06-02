@@ -35,8 +35,8 @@ client.shard.id = client.shard.ids[0]
 
 client.globalTools = new Tools(client);
 
-// connect to db
-client.db = new Model("servers", require("./database_schema.js").schema)
+// connect to db (JSON file storage - see classes/DatabaseModel.js)
+client.db = new Model("servers", require("./database_schema.js").applyDefaults)
 
 // command files
 const dir = "./commands/"

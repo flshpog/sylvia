@@ -33,42 +33,17 @@ Fortunately Discord makes this super easy, thanks Discord
 	- `siteURL` does **NOT** control the actual URL for your server - it just changes where the bot links users to
 	- If you provide a `changelogURL` or `supportURL` they'll appear in /botstatus
 2. Test out the bot by opening up your terminal in the root directory and typing `node polaris.js`
-	- Most commands won't work due to the lack of a database, but if the bot appears online it means you're good
+	- If the bot appears online, you're good!
 	- Only dev commands will be present by default, the rest will be deployed in step 4. Dev commands are only visible to server admins and only work if you're specified as a dev in the config file
 
-### Step 3: Setting up the database
-Personally I know very little about this topic so if it sounds like I have no idea what I'm saying, it's because I don't. This is just what I do for my own projects.
-This step is like the equivalent of learning about port forwarding for your Minecraft server, so don't feel bad if this is the point where you give up
+### Step 3: Data storage (nothing to set up!)
+This fork **does not use MongoDB** (or any database server). All data is stored in plain JSON files in the `data/` folder, which the bot creates automatically on first run:
+- `data/servers.json` - all server settings and member XP
+- `data/auth.json` - website login tokens
 
-There's many different ways to set up MongoDB, but I recommend one of these methods:
+There's nothing to install or configure. To double check it's working, run `/db` with no arguments - if the bot responds (likely "No data!") you're all set.
 
-**Option 1: [MongoDB Atlas](https://cloud.mongodb.com/)**
-- This is MongoDB's cloud service. It's by far the easiest to set up, but all the data is stored on their cloud, not yours. The free tier has a storage limit, but you won't go anywhere close to exceeding it.
-
-**Option 2: Host it on a server**
-- My personal choice, because I have one. If you have an Ubuntu server, [this tutorial](https://www.digitalocean.com/community/tutorials/how-to-install-mongodb-on-ubuntu-20-04) followed by [this one](https://www.digitalocean.com/community/tutorials/how-to-secure-mongodb-on-ubuntu-20-04) should be good. (if the `mongo` command doesn't work, use `mongosh`) 
-- If you don't have an Ubuntu server, just google around and there will probably be a guide for your platform
-- If you created a DB along with a username and password, you did it correctly
-- I also recommend setting up [MongoDB compass](https://www.mongodb.com/products/tools/compass) so you have a GUI!
-
-**Option 3: Host it on your computer**
-- Probably not the wisest idea since it needs to be running 24/7. I would only do this if you're hosting the entire bot on it for some reason, or just want to test things out. But if that sounds like a plan to you, go follow this [absurdly long tutorial](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-windows/).
-
-All set? Awesome. Polaris uses two collections: `servers` for server data, and `auth` for website logins. I'm pretty sure the bot automatically creates these for you.
-
-1. Find your **connection string**. The way you obtain it depends on how you set up MongoDB, but there will definitely be one. It should start with `mongodb://` or `mongodb+srv://` or something similar. **If you're self-hosting and can't find the string, you can skip this and just use the username + password you set up.**
-
-2. Open up `.env` and paste in your database name as well as the connection string (MONGO_DB_URI in the file). If you don't want to use a connection string you can leave the value blank and provide the IP, username, and password instead.
-
-3. Fire up the bot and check the console to see if it connected!
-	- To double check, you can run /db with no arguments - if the bot responds (likely "No data!") it means you actually did it correctly!!! If not, cry
-
-If it's not connecting, try checking:
-- Is the database actually running?
-- Did you paste the connection string incorrectly?
-- Did you enter the correct database name into .env?
-- Did you enter the right username and password?
-  
+**Backups:** since everything lives in `data/`, just copy that folder to back up every server's XP and settings. (It's gitignored so it won't get committed.)
 
 ### Step 4: Final steps
 1. Deploy the bot's commands by running /deploy with the global argument set to true

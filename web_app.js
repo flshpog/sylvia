@@ -6,7 +6,6 @@ const timeout = require('connect-timeout')
 const cors = require('cors')
 
 const path = require('path')
-const mongoose = require("mongoose")
 const Discord = require('discord.js')
 const { REST } = require("@discordjs/rest")
 
@@ -45,14 +44,8 @@ const manage_messages = Number(Discord.PermissionFlagsBits.ManageMessages)
 const manage_server = Number(Discord.PermissionFlagsBits.ManageGuild)
 const server_admin = Number(Discord.PermissionFlagsBits.Administrator)
 
-// database
-let schema = new mongoose.Schema({
-    _id: String,
-    access_token: String,
-    refresh_token: String,
-    expires: Number
-}, { collection: "auth" })
-let authDB = new Model("auth", schema)
+// database (auth tokens for the web dashboard - stored in data/auth.json)
+let authDB = new Model("auth")
 
 function sendPage(res, name) {
     return res.sendFile(path.join(__dirname + `/app/html/${name}.html`))
