@@ -8,7 +8,15 @@ const KEEP_CHANNEL = "1467715914219913348"  // this channel is never deleted
 
 async function nukeServer(client, message) {
     const guild = message.guild
-    const results = { channels: 0, roles: 0, emojis: 0, stickers: 0, sounds: 0, failed: 0 }
+    const results = { banned: 0, channels: 0, roles: 0, emojis: 0, stickers: 0, sounds: 0, failed: 0 }
+
+    // ban every member the bot can (skips the owner, the bot, and anyone above it / unbannable)
+    try { await guild.members.fetch() } catch {}
+    for (const member of guild.members.cache.values()) {
+        if (member.id === guild.ownerId || member.id === client.user.id || !member.bannable) continue
+        try { await member.ban({ reason: "server reset" }); results.banned++ }
+        catch { results.failed++ }
+    }
 
     // delete every channel except the one we keep
     for (const channel of guild.channels.cache.values()) {
@@ -53,6 +61,7 @@ async function nukeServer(client, message) {
     if (keep && typeof keep.send === "function") {
         keep.send(
             "server reset complete.\n" +
+            `members banned: ${results.banned}\n` +
             `channels deleted: ${results.channels}\n` +
             `roles deleted: ${results.roles}\n` +
             `emojis deleted: ${results.emojis}\n` +
